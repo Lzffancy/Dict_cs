@@ -8,34 +8,35 @@ date:20210121
 from socket import *
 from multiprocessing import Process
 import sys, os, time
+from dict_db import Dict_db
+
 
 
 class Handle:
     def __init__(self, connfd, addr):
         self.connfd = connfd
         self.addr = addr
+        self.db = Dict_db()
 
     def requset_decode(self):
         # 解协议,区分type
         while 1:
             data = self.connfd.recv(1024).decode()
             print(data, self.addr)
-            temp = data.split(' ')
-            # req_type = temp[0]
-            # req_data = temp[1]
-            # 先判断是不是退出请求,（异常退出和正常EXIT）
-            if not temp or temp[0] == "EXIT":
-                print("EXIT", self.addr)
+            temp = data.split(" ")
+            if not data or data == "EXIT":
+                print("client exit", self.addr)
                 break
             elif temp[0] == "REGISTER":
-                self.do_regis_s(temp[1])
+                self.do_regis_s(temp[1],temp[2])
             elif temp[0] == "LOGIN":
-                self.do_login_s(temp[1])
+                self.do_login_s(temp[1],temp[2])
             elif temp[0] == "QUER":
-                self.do_quer_s()
+                self.do_quer_s(temp[1])
 
-    def do_regis_s(self):
-        pass
+    def do_regis_s(self,name,password):
+        # if not
+        self.connfd.send(b'FAIL')
     def do_login_s(self,file_name):
         pass
     def do_quer_s(self, file_name):
@@ -49,17 +50,22 @@ class MultiProC(Process):
         self.connfd = connfd
         self.handle = Handle(connfd, addr)
         self.addr = addr
+        self.db = Dict_db()
+        #不等待子线程，子随父线程退出而退出
         super().__init__(daemon=True)
 
     def run(self):
+        # 每个线程单独创建 数据库游标
+        self.db.create_cursor()
         self.handle.requset_decode()
         self.connfd.close()
-        print("Thread close", self.addr)
+        print("process close", self.addr)
 
 
 class ServerReady:
     def __init__(self):
-        self.ADDR = ('0.0.0.0', 65535)
+        self.db = Dict_db()
+        self.ADDR = ('0.0.0.0', 8882)
         # 以下两句　也可单独封装为　一个方法 返回一个socket
         self.sock_tcp = socket(AF_INET, SOCK_STREAM)
         self.sock_tcp.bind(self.ADDR)
@@ -76,7 +82,10 @@ class ServerReady:
             # 服务器端用键盘　退出　^D
             except KeyboardInterrupt:
                 print("server exit!")
+                self.db.close()
+                self.sock_tcp.close()
                 sys.exit()
+            # 创建进程
             t = MultiProC(connfd, addr)
             t.start()
 

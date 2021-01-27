@@ -4,8 +4,6 @@ author:fancy
 email:
 date:20210121
 """
-
-
 import pymysql
 
 
@@ -21,14 +19,18 @@ class Dict_db:
         }
         self.connect()
 
-    # 完成数据库连接,建立游标
+    # 完成数据库连接
     def connect(self):
+        #生成连接 对象
         self.db = pymysql.connect(**self.kwargs)
+
+    # 建立游标
+    def create_cursor(self):
         self.cur = self.db.cursor()
 
     # 关闭
     def close(self):
-        self.cur.close()
+        #self.cur.close()
         self.db.close()
 
     # 注册
